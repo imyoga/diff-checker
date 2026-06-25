@@ -45,6 +45,7 @@ export default function DiffChecker() {
   const [copied, setCopied] = useState<"original" | "modified" | null>(null)
   const originalInputRef = useRef<HTMLInputElement>(null)
   const modifiedInputRef = useRef<HTMLInputElement>(null)
+  const originalEditorRef = useRef<any>(null)
 
   const handleFileOpen = useCallback(
     (side: "original" | "modified") => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,8 +54,10 @@ export default function DiffChecker() {
       const reader = new FileReader()
       reader.onload = (ev) => {
         const text = ev.target?.result as string
-        if (side === "original") setOriginal(text)
-        else setModified(text)
+        if (side === "original") {
+          setOriginal(text)
+          originalEditorRef.current?.setValue(text)
+        } else setModified(text)
       }
       reader.readAsText(file)
       e.target.value = ""
@@ -64,7 +67,7 @@ export default function DiffChecker() {
 
   const handleCopy = useCallback(
     (side: "original" | "modified") => async () => {
-      const text = side === "original" ? original : modified
+      const text = side === "original" ? originalEditorRef.current?.getValue() ?? original : modified
       await navigator.clipboard.writeText(text)
       setCopied(side)
       setTimeout(() => setCopied(null), 1500)
@@ -74,8 +77,10 @@ export default function DiffChecker() {
 
   const handleClear = useCallback(
     (side: "original" | "modified") => () => {
-      if (side === "original") setOriginal("")
-      else setModified("")
+      if (side === "original") {
+        originalEditorRef.current?.setValue("")
+        setOriginal("")
+      } else setModified("")
     },
     []
   )
@@ -178,11 +183,8 @@ export default function DiffChecker() {
           original={original}
           modified={modified}
           onMount={(editor) => {
-            const originalModel = editor.getOriginalEditor()
+            originalEditorRef.current = editor.getOriginalEditor()
             const modifiedModel = editor.getModifiedEditor()
-            originalModel.onDidChangeModelContent(() => {
-              setOriginal(originalModel.getValue())
-            })
             modifiedModel.onDidChangeModelContent(() => {
               setModified(modifiedModel.getValue())
             })
@@ -192,6 +194,7 @@ export default function DiffChecker() {
             lineHeight: 20,
             fontFamily: "'Geist Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace",
             fontLigatures: true,
+            originalEditable: true,
             renderSideBySide: true,
             minimap: { enabled: false },
             scrollbar: {
@@ -227,3 +230,4 @@ export default function DiffChecker() {
     </div>
   )
 }
+
